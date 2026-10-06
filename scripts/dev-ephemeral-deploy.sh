@@ -1,9 +1,13 @@
 #!/bin/bash
+# ==============================================================================
+# dev-ephemeral-deploy.sh — Ephemeral deployment for changed DEV services
+# ==============================================================================
 set -eo pipefail
 
 AWS_REGION="${AWS_REGION:-ap-southeast-1}"
 CLUSTER_NAME="${CLUSTER_NAME:-nt548-cluster}"
 IMAGE_TAG="${IMAGE_TAG:-}"
+CHANGED_ENV="${1:-changed_components.env}"
 
 if [ -z "$IMAGE_TAG" ]; then
     echo "ERROR: IMAGE_TAG must be the source commit SHA. Mutable fallback tags are forbidden."
@@ -11,12 +15,34 @@ if [ -z "$IMAGE_TAG" ]; then
 fi
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
+# Load changed components if present
+if [ -f "$CHANGED_ENV" ]; then
+    # shellcheck source=/dev/null
+    source "$CHANGED_ENV"
+elif [ -f "build_metadata.json" ]; then
+    # Try reading from build_metadata.json
+    export FRONTEND_CHANGED=$(python3 -c "import json; print(str(json.load(open('build_metadata.json')).get('components', {}).get('frontend', True)).lower())" 2>/dev/null || echo "true")
+    export USER_CHANGED=$(python3 -c "import json; print(str(json.load(open('build_metadata.json')).get('components', {}).get('user', True)).lower())" 2>/dev/null || echo "true")
+    export PRODUCT_CHANGED=$(python3 -c "import json; print(str(json.load(open('build_metadata.json')).get('components', {}).get('product', True)).lower())" 2>/dev/null || echo "true")
+    export ORDER_CHANGED=$(python3 -c "import json; print(str(json.load(open('build_metadata.json')).get('components', {}).get('order', True)).lower())" 2>/dev/null || echo "true")
+else
+    FRONTEND_CHANGED=true
+    USER_CHANGED=true
+    PRODUCT_CHANGED=true
+    ORDER_CHANGED=true
+fi
+
 echo "=================================================="
 echo "🚀 DEPLOYING DEV EPHEMERAL STACK"
 echo "Region    : $AWS_REGION"
 echo "Cluster   : $CLUSTER_NAME"
 echo "Image Tag : $IMAGE_TAG"
 echo "Account   : $ACCOUNT_ID"
+echo "Changed Services:"
+echo "   frontend: ${FRONTEND_CHANGED:-true}"
+echo "   user    : ${USER_CHANGED:-true}"
+echo "   product : ${PRODUCT_CHANGED:-true}"
+echo "   order   : ${ORDER_CHANGED:-true}"
 echo "=================================================="
 
 # Lookup Shared Resources
@@ -64,12 +90,6 @@ create_tg() {
     echo "$arn"
 }
 
-echo "Creating DEV Target Groups..."
-TG_FE_ARN=$(create_tg "nt548-dev-tg-fe" 80 "/health")
-TG_USER_ARN=$(create_tg "nt548-dev-tg-user" 5001 "/health")
-TG_PROD_ARN=$(create_tg "nt548-dev-tg-product" 5002 "/health")
-TG_ORDER_ARN=$(create_tg "nt548-dev-tg-order" 5003 "/health")
-
 # 2. Create DEV ALB Cookie Routing Rules
 create_rule() {
     local priority=$1
@@ -104,12 +124,6 @@ create_rule() {
     fi
 }
 
-echo "Configuring Cookie ALB listener rules..."
-create_rule 10 "/api/users*" "$TG_USER_ARN"
-create_rule 11 "/api/products*" "$TG_PROD_ARN"
-create_rule 12 "/api/orders*" "$TG_ORDER_ARN"
-create_rule 13 "" "$TG_FE_ARN"
-
 # 3. Register Task Definitions and Deploy Services
 deploy_service() {
     local name=$1
@@ -119,8 +133,6 @@ deploy_service() {
     local image="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$repo:$IMAGE_TAG"
     local service_name="nt548-dev-$name"
 
-    # ECS retains deleted services in DRAINING for a short period. Creating a
-    # service with the same name during that window fails deterministically.
     local service_status
     service_status=$(aws ecs describe-services \
         --cluster "$CLUSTER_NAME" \
@@ -209,19 +221,56 @@ deploy_service() {
     fi
 }
 
-deploy_service "frontend" 80 "$TG_FE_ARN"
-deploy_service "user" 5001 "$TG_USER_ARN"
-deploy_service "product" 5002 "$TG_PROD_ARN"
-deploy_service "order" 5003 "$TG_ORDER_ARN"
+SERVICES_TO_WAIT=()
 
-echo "Waiting for all DEV ECS services to reach a stable, load-balancer-healthy state..."
-aws ecs wait services-stable \
-    --cluster "$CLUSTER_NAME" \
-    --services \
-        nt548-dev-frontend \
-        nt548-dev-user \
-        nt548-dev-product \
-        nt548-dev-order \
-    --region "$AWS_REGION"
+# Conditionally deploy only changed services
+if [ "${FRONTEND_CHANGED:-false}" = "true" ]; then
+    echo "Configuring Ephemeral DEV frontend..."
+    TG_FE_ARN=$(create_tg "nt548-dev-tg-fe" 80 "/health")
+    create_rule 13 "" "$TG_FE_ARN"
+    deploy_service "frontend" 80 "$TG_FE_ARN"
+    SERVICES_TO_WAIT+=("nt548-dev-frontend")
+else
+    echo "⏭️ [SKIP] frontend unchanged, skipping ephemeral deployment"
+fi
 
-echo "✅ Ephemeral DEV deployment is stable and ready for smoke tests."
+if [ "${USER_CHANGED:-false}" = "true" ]; then
+    echo "Configuring Ephemeral DEV user service..."
+    TG_USER_ARN=$(create_tg "nt548-dev-tg-user" 5001 "/health")
+    create_rule 10 "/api/users*" "$TG_USER_ARN"
+    deploy_service "user" 5001 "$TG_USER_ARN"
+    SERVICES_TO_WAIT+=("nt548-dev-user")
+else
+    echo "⏭️ [SKIP] user service unchanged, skipping ephemeral deployment"
+fi
+
+if [ "${PRODUCT_CHANGED:-false}" = "true" ]; then
+    echo "Configuring Ephemeral DEV product service..."
+    TG_PROD_ARN=$(create_tg "nt548-dev-tg-product" 5002 "/health")
+    create_rule 11 "/api/products*" "$TG_PROD_ARN"
+    deploy_service "product" 5002 "$TG_PROD_ARN"
+    SERVICES_TO_WAIT+=("nt548-dev-product")
+else
+    echo "⏭️ [SKIP] product service unchanged, skipping ephemeral deployment"
+fi
+
+if [ "${ORDER_CHANGED:-false}" = "true" ]; then
+    echo "Configuring Ephemeral DEV order service..."
+    TG_ORDER_ARN=$(create_tg "nt548-dev-tg-order" 5003 "/health")
+    create_rule 12 "/api/orders*" "$TG_ORDER_ARN"
+    deploy_service "order" 5003 "$TG_ORDER_ARN"
+    SERVICES_TO_WAIT+=("nt548-dev-order")
+else
+    echo "⏭️ [SKIP] order service unchanged, skipping ephemeral deployment"
+fi
+
+if [ ${#SERVICES_TO_WAIT[@]} -gt 0 ]; then
+    echo "Waiting for deployed DEV ECS services to reach stable state: ${SERVICES_TO_WAIT[*]}..."
+    aws ecs wait services-stable \
+        --cluster "$CLUSTER_NAME" \
+        --services "${SERVICES_TO_WAIT[@]}" \
+        --region "$AWS_REGION"
+    echo "✅ Ephemeral DEV deployment is stable and ready for smoke tests."
+else
+    echo "ℹ️ No ephemeral services deployed (all services unchanged)."
+fi

@@ -11,46 +11,63 @@ phases:
       nodejs: 20
       python: 3.12
     commands:
-      - "npm ci --prefix be-user-service --omit=dev"
-      - "npm ci --prefix be-order-service --omit=dev"
-      - "pip install -r be-product-service/requirements.txt"
+      - "chmod +x scripts/*.sh"
   pre_build:
     commands:
-      - "node -c be-user-service/server.js"
-      - "node -c be-order-service/server.js"
-      - "python -m py_compile be-product-service/app.py"
-      - "npm test --prefix be-user-service"
-      - "npm test --prefix be-order-service"
-      - "PYTHONPATH=be-product-service python -m unittest discover -s be-product-service -p 'test_*.py'"
+      - "echo Phase 1 Change Detection"
+      - "bash scripts/detect-changes.sh"
+      - ". ./changed_components.env"
       - "export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)"
       - "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
-      - "COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)"
+      - "COMMIT_HASH=$(echo ${CODEBUILD_RESOLVED_SOURCE_VERSION:-$(git rev-parse --short HEAD 2>/dev/null || echo '')} | cut -c 1-7)"
       - "test -n \"$COMMIT_HASH\" || { echo 'Missing source commit SHA; refusing a non-immutable image tag'; exit 1; }"
       - "IMAGE_TAG=$COMMIT_HASH"
-      - "echo Building with Image Tag $IMAGE_TAG"
+      - "echo Target Image Tag: $IMAGE_TAG"
+      - "echo Phase 2 Testing Changed Services"
+      - "if [ \"$USER_CHANGED\" = \"true\" ]; then npm ci --prefix be-user-service --omit=dev && bash scripts/test-service.sh user; else echo '[SKIP] user-service unchanged'; fi"
+      - "if [ \"$PRODUCT_CHANGED\" = \"true\" ]; then pip install -r be-product-service/requirements.txt && bash scripts/test-service.sh product; else echo '[SKIP] product-service unchanged'; fi"
+      - "if [ \"$ORDER_CHANGED\" = \"true\" ]; then npm ci --prefix be-order-service --omit=dev && bash scripts/test-service.sh order; else echo '[SKIP] order-service unchanged'; fi"
+      - "if [ \"$FRONTEND_CHANGED\" = \"true\" ]; then bash scripts/test-service.sh frontend; else echo '[SKIP] frontend unchanged'; fi"
+      - "if [ \"$DATABASE_CHANGED\" = \"true\" ]; then bash scripts/test-service.sh database; else echo '[SKIP] database unchanged'; fi"
   build:
     commands:
-      - "echo Building Docker image dev user"
-      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-user:$IMAGE_TAG ./be-user-service"
-      - "echo Building Docker image dev product"
-      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-product:$IMAGE_TAG ./be-product-service"
-      - "echo Building Docker image dev order"
-      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-order:$IMAGE_TAG ./be-order-service"
-      - "echo Building Docker image dev frontend"
-      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-frontend:$IMAGE_TAG ./frontend"
+      - "echo Phase 3 Building Changed Docker Images"
+      - "if [ \"$USER_CHANGED\" = \"true\" ]; then bash scripts/build-service.sh user $IMAGE_TAG dev; else echo '[SKIP] user-service unchanged'; fi"
+      - "if [ \"$PRODUCT_CHANGED\" = \"true\" ]; then bash scripts/build-service.sh product $IMAGE_TAG dev; else echo '[SKIP] product-service unchanged'; fi"
+      - "if [ \"$ORDER_CHANGED\" = \"true\" ]; then bash scripts/build-service.sh order $IMAGE_TAG dev; else echo '[SKIP] order-service unchanged'; fi"
+      - "if [ \"$FRONTEND_CHANGED\" = \"true\" ]; then bash scripts/build-service.sh frontend $IMAGE_TAG dev; else echo '[SKIP] frontend unchanged'; fi"
   post_build:
     commands:
-      - "echo Pushing images to ECR DEV"
-      - "aws ecr describe-images --repository-name nt548-dev-user --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-dev-user tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-user:$IMAGE_TAG"
-      - "aws ecr describe-images --repository-name nt548-dev-product --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-dev-product tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-product:$IMAGE_TAG"
-      - "aws ecr describe-images --repository-name nt548-dev-order --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-dev-order tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-order:$IMAGE_TAG"
-      - "aws ecr describe-images --repository-name nt548-dev-frontend --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-dev-frontend tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-frontend:$IMAGE_TAG"
-      - "echo Generating build metadata"
-      - "printf '{\"commitHash\":\"%s\",\"imageTag\":\"%s\",\"environment\":\"dev\"}' \"$COMMIT_HASH\" \"$IMAGE_TAG\" > build_metadata.json"
-      - "echo Build completed successfully"
+      - "echo Phase 4 Pushing Changed Images to DEV ECR"
+      - "if [ \"$USER_CHANGED\" = \"true\" ]; then bash scripts/push-image.sh user $IMAGE_TAG dev; fi"
+      - "if [ \"$PRODUCT_CHANGED\" = \"true\" ]; then bash scripts/push-image.sh product $IMAGE_TAG dev; fi"
+      - "if [ \"$ORDER_CHANGED\" = \"true\" ]; then bash scripts/push-image.sh order $IMAGE_TAG dev; fi"
+      - "if [ \"$FRONTEND_CHANGED\" = \"true\" ]; then bash scripts/push-image.sh frontend $IMAGE_TAG dev; fi"
+      - "echo Phase 5 Generating Build Metadata"
+      - "python3 -c '
+import json, os
+metadata = {
+    \"commitHash\": os.environ.get(\"COMMIT_HASH\", \"\"),
+    \"imageTag\": os.environ.get(\"IMAGE_TAG\", \"\"),
+    \"environment\": \"dev\",
+    \"components\": {
+        \"frontend\": os.environ.get(\"FRONTEND_CHANGED\", \"false\") == \"true\",
+        \"user\": os.environ.get(\"USER_CHANGED\", \"false\") == \"true\",
+        \"product\": os.environ.get(\"PRODUCT_CHANGED\", \"false\") == \"true\",
+        \"order\": os.environ.get(\"ORDER_CHANGED\", \"false\") == \"true\",
+        \"database\": os.environ.get(\"DATABASE_CHANGED\", \"false\") == \"true\"
+    }
+}
+with open(\"build_metadata.json\", \"w\") as f:
+    json.dump(metadata, f, indent=2)
+' "
+      - "cat build_metadata.json"
+      - "echo DEV build and push completed successfully"
 
 artifacts:
   files:
     - build_metadata.json
+    - changed_components.json
+    - changed_components.env
     - scripts/**/*
     - buildspec/**/*

@@ -11,17 +11,17 @@ phases:
       - "chmod +x scripts/*.sh"
   pre_build:
     commands:
-      - "echo Reading image tag from build metadata"
-      - "if [ -f build_metadata.json ]; then export IMAGE_TAG=$(cat build_metadata.json | grep -o '\"imageTag\":\"[^\"]*' | cut -d'\"' -f4); fi"
+      - "echo Reading image tag and changed components from build metadata"
+      - "if [ -f build_metadata.json ]; then export IMAGE_TAG=$(python3 -c 'import json; print(json.load(open(\"build_metadata.json\")).get(\"imageTag\", \"\"))'); fi"
       - "test -n \"${IMAGE_TAG:-}\" || { echo 'Missing immutable image tag from build_metadata.json'; exit 1; }"
-      - "echo Deploying ephemeral DEV with IMAGE_TAG $IMAGE_TAG"
+      - "echo Target ephemeral DEV deployment tag: $IMAGE_TAG"
   build:
     commands:
-      - "echo Step 1 Ephemeral Deploy"
-      - "bash scripts/dev-ephemeral-deploy.sh"
-      - "echo Step 2 Smoke Testing DEV with Cookie nt548-test=true"
+      - "echo Step 1 Ephemeral Deploy for Changed Services"
+      - "bash scripts/dev-ephemeral-deploy.sh changed_components.env"
+      - "echo Step 2 Smoke Testing DEV Integration with Cookie nt548-test=true"
       - "bash scripts/dev-smoke-test.sh"
   post_build:
     commands:
-      - "echo Step 3 GUARANTEED CLEANUP"
+      - "echo Step 3 GUARANTEED CLEANUP of ephemeral resources"
       - "bash scripts/dev-cleanup.sh"

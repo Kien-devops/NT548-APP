@@ -14,45 +14,51 @@ phases:
       nodejs: 20
       python: 3.12
     commands:
-      - "npm ci --prefix be-user-service --omit=dev"
-      - "npm ci --prefix be-order-service --omit=dev"
-      - "pip install -r be-product-service/requirements.txt"
+      - "chmod +x scripts/*.sh"
   pre_build:
     commands:
-      - "echo Running unit tests and syntax validation"
-      - "node -c be-user-service/server.js"
-      - "node -c be-order-service/server.js"
-      - "python -m py_compile be-product-service/app.py"
-      - "npm test --prefix be-user-service"
-      - "npm test --prefix be-order-service"
-      - "PYTHONPATH=be-product-service python -m unittest discover -s be-product-service -p 'test_*.py'"
+      - "echo Phase 1 Change Detection"
+      - "bash scripts/detect-changes.sh"
+      - ". ./changed_components.env"
       - "export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)"
       - "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
-      - "COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)"
+      - "COMMIT_HASH=$(echo ${CODEBUILD_RESOLVED_SOURCE_VERSION:-$(git rev-parse --short HEAD 2>/dev/null || echo '')} | cut -c 1-7)"
       - "test -n \"$COMMIT_HASH\" || { echo 'Missing source commit SHA; refusing a non-immutable image tag'; exit 1; }"
       - "IMAGE_TAG=$COMMIT_HASH"
-      - "echo Building PROD images with Tag $IMAGE_TAG"
+      - "echo Target PROD Image Tag: $IMAGE_TAG"
+      - "echo Phase 2 Testing Changed Services"
+      - "if [ \"$USER_CHANGED\" = \"true\" ]; then npm ci --prefix be-user-service --omit=dev && bash scripts/test-service.sh user; else echo '[SKIP] user-service unchanged'; fi"
+      - "if [ \"$PRODUCT_CHANGED\" = \"true\" ]; then pip install -r be-product-service/requirements.txt && bash scripts/test-service.sh product; else echo '[SKIP] product-service unchanged'; fi"
+      - "if [ \"$ORDER_CHANGED\" = \"true\" ]; then npm ci --prefix be-order-service --omit=dev && bash scripts/test-service.sh order; else echo '[SKIP] order-service unchanged'; fi"
+      - "if [ \"$FRONTEND_CHANGED\" = \"true\" ]; then bash scripts/test-service.sh frontend; else echo '[SKIP] frontend unchanged'; fi"
+      - "if [ \"$DATABASE_CHANGED\" = \"true\" ]; then bash scripts/test-service.sh database; else echo '[SKIP] database unchanged'; fi"
   build:
     commands:
-      - "echo Building Docker images"
-      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-user:$IMAGE_TAG ./be-user-service"
-      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-product:$IMAGE_TAG ./be-product-service"
-      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-order:$IMAGE_TAG ./be-order-service"
-      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-frontend:$IMAGE_TAG ./frontend"
-      - "echo Pushing Docker images to PROD ECR"
-      - "aws ecr describe-images --repository-name nt548-prod-user --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-prod-user tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-user:$IMAGE_TAG"
-      - "aws ecr describe-images --repository-name nt548-prod-product --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-prod-product tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-product:$IMAGE_TAG"
-      - "aws ecr describe-images --repository-name nt548-prod-order --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-prod-order tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-order:$IMAGE_TAG"
-      - "aws ecr describe-images --repository-name nt548-prod-frontend --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-prod-frontend tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-frontend:$IMAGE_TAG"
+      - "echo Phase 3 Building Changed Docker Images"
+      - "if [ \"$USER_CHANGED\" = \"true\" ]; then bash scripts/build-service.sh user $IMAGE_TAG prod; else echo '[SKIP] user-service unchanged'; fi"
+      - "if [ \"$PRODUCT_CHANGED\" = \"true\" ]; then bash scripts/build-service.sh product $IMAGE_TAG prod; else echo '[SKIP] product-service unchanged'; fi"
+      - "if [ \"$ORDER_CHANGED\" = \"true\" ]; then bash scripts/build-service.sh order $IMAGE_TAG prod; else echo '[SKIP] order-service unchanged'; fi"
+      - "if [ \"$FRONTEND_CHANGED\" = \"true\" ]; then bash scripts/build-service.sh frontend $IMAGE_TAG prod; else echo '[SKIP] frontend unchanged'; fi"
+      - "echo Phase 4 Pushing Changed Images to PROD ECR"
+      - "if [ \"$USER_CHANGED\" = \"true\" ]; then bash scripts/push-image.sh user $IMAGE_TAG prod; fi"
+      - "if [ \"$PRODUCT_CHANGED\" = \"true\" ]; then bash scripts/push-image.sh product $IMAGE_TAG prod; fi"
+      - "if [ \"$ORDER_CHANGED\" = \"true\" ]; then bash scripts/push-image.sh order $IMAGE_TAG prod; fi"
+      - "if [ \"$FRONTEND_CHANGED\" = \"true\" ]; then bash scripts/push-image.sh frontend $IMAGE_TAG prod; fi"
   post_build:
     commands:
-      - "echo Verifying ECR vulnerability scans for all 4 images"
-      - "bash scripts/check-ecr-scans.sh $IMAGE_TAG"
+      - "echo Phase 5 Verifying ECR Scans for Changed Images"
+      - "rm -f ecr-scan-summary.json"
+      - "if [ \"$USER_CHANGED\" = \"true\" ]; then bash scripts/check-service-scan.sh user $IMAGE_TAG prod; fi"
+      - "if [ \"$PRODUCT_CHANGED\" = \"true\" ]; then bash scripts/check-service-scan.sh product $IMAGE_TAG prod; fi"
+      - "if [ \"$ORDER_CHANGED\" = \"true\" ]; then bash scripts/check-service-scan.sh order $IMAGE_TAG prod; fi"
+      - "if [ \"$FRONTEND_CHANGED\" = \"true\" ]; then bash scripts/check-service-scan.sh frontend $IMAGE_TAG prod; fi"
+      - "if [ ! -f ecr-scan-summary.json ]; then echo '[]' > ecr-scan-summary.json; fi"
       - >-
-        export SCAN_SUMMARY=$(python3 -c 'import json; data=json.load(open("ecr-scan-summary.json")); print("; ".join("{repository}@{digest}:C={critical},H={high}".format(**item) for item in data))')
-      - "echo Generating one image definition per ECS service"
-      - "bash scripts/generate-imagedefinitions.sh $AWS_ACCOUNT_ID $AWS_REGION $IMAGE_TAG"
-      - "echo PROD application build and scan finished successfully"
+        export SCAN_SUMMARY=$(python3 -c 'import json; data=json.load(open("ecr-scan-summary.json")); print("; ".join("{repository}@{digest}:C={critical},H={high}".format(**item) for item in data) if data else "No images built; all services unchanged")')
+      - "echo Scan Summary: $SCAN_SUMMARY"
+      - "echo Phase 6 Generating ECS Image Definitions (Changed vs Unchanged)"
+      - "bash scripts/generate-imagedefinitions.sh $AWS_ACCOUNT_ID $AWS_REGION $IMAGE_TAG changed_components.env"
+      - "echo PROD application build, scan, and artifact generation complete"
 
 artifacts:
   files:
@@ -61,3 +67,5 @@ artifacts:
     - imagedefinitions-product.json
     - imagedefinitions-order.json
     - ecr-scan-summary.json
+    - changed_components.json
+    - changed_components.env

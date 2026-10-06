@@ -17,7 +17,11 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
-.terraformrc
+# Pipeline runtime artifacts
+changed_components.*
+ecr-scan-summary.json
+build_metadata.json
+imagedefinitions-*.json
 terraform.rc
 tfplan
 tfplan.txt
