@@ -44,24 +44,7 @@ phases:
       - "if [ \"$ORDER_CHANGED\" = \"true\" ]; then bash scripts/push-image.sh order $IMAGE_TAG dev; fi"
       - "if [ \"$FRONTEND_CHANGED\" = \"true\" ]; then bash scripts/push-image.sh frontend $IMAGE_TAG dev; fi"
       - "echo Phase 5 Generating Build Metadata"
-      - "python3 -c '
-import json, os
-metadata = {
-    \"commitHash\": os.environ.get(\"COMMIT_HASH\", \"\"),
-    \"imageTag\": os.environ.get(\"IMAGE_TAG\", \"\"),
-    \"environment\": \"dev\",
-    \"components\": {
-        \"frontend\": os.environ.get(\"FRONTEND_CHANGED\", \"false\") == \"true\",
-        \"user\": os.environ.get(\"USER_CHANGED\", \"false\") == \"true\",
-        \"product\": os.environ.get(\"PRODUCT_CHANGED\", \"false\") == \"true\",
-        \"order\": os.environ.get(\"ORDER_CHANGED\", \"false\") == \"true\",
-        \"database\": os.environ.get(\"DATABASE_CHANGED\", \"false\") == \"true\"
-    }
-}
-with open(\"build_metadata.json\", \"w\") as f:
-    json.dump(metadata, f, indent=2)
-' "
-      - "cat build_metadata.json"
+      - "bash scripts/generate-build-metadata.sh \"$COMMIT_HASH\" \"$IMAGE_TAG\" dev changed_components.env"
       - "echo DEV build and push completed successfully"
 
 artifacts:
