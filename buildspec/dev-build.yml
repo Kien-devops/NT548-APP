@@ -1,0 +1,56 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_REGION: "ap-southeast-1"
+    ENVIRONMENT: "dev"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+      python: 3.12
+    commands:
+      - "npm ci --prefix be-user-service --omit=dev"
+      - "npm ci --prefix be-order-service --omit=dev"
+      - "pip install -r be-product-service/requirements.txt"
+  pre_build:
+    commands:
+      - "node -c be-user-service/server.js"
+      - "node -c be-order-service/server.js"
+      - "python -m py_compile be-product-service/app.py"
+      - "npm test --prefix be-user-service"
+      - "npm test --prefix be-order-service"
+      - "PYTHONPATH=be-product-service python -m unittest discover -s be-product-service -p 'test_*.py'"
+      - "export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)"
+      - "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+      - "COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)"
+      - "test -n \"$COMMIT_HASH\" || { echo 'Missing source commit SHA; refusing a non-immutable image tag'; exit 1; }"
+      - "IMAGE_TAG=$COMMIT_HASH"
+      - "echo Building with Image Tag $IMAGE_TAG"
+  build:
+    commands:
+      - "echo Building Docker image dev user"
+      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-user:$IMAGE_TAG ./be-user-service"
+      - "echo Building Docker image dev product"
+      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-product:$IMAGE_TAG ./be-product-service"
+      - "echo Building Docker image dev order"
+      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-order:$IMAGE_TAG ./be-order-service"
+      - "echo Building Docker image dev frontend"
+      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-frontend:$IMAGE_TAG ./frontend"
+  post_build:
+    commands:
+      - "echo Pushing images to ECR DEV"
+      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-user:$IMAGE_TAG"
+      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-product:$IMAGE_TAG"
+      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-order:$IMAGE_TAG"
+      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-frontend:$IMAGE_TAG"
+      - "echo Generating build metadata"
+      - "printf '{\"commitHash\":\"%s\",\"imageTag\":\"%s\",\"environment\":\"dev\"}' \"$COMMIT_HASH\" \"$IMAGE_TAG\" > build_metadata.json"
+      - "echo Build completed successfully"
+
+artifacts:
+  files:
+    - build_metadata.json
+    - scripts/**/*
+    - buildspec/**/*

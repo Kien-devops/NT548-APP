@@ -1,0 +1,59 @@
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    add_header X-NT548-Environment "${ENVIRONMENT}" always;
+
+    # Dedicated lightweight health check endpoint
+    location = /health {
+        access_log off;
+        default_type text/plain;
+        add_header X-NT548-Environment "${ENVIRONMENT}" always;
+        return 200 "ok\n";
+    }
+
+    # Resolve upstreams at request time. PROD points these variables at the
+    # shared ALB because ALB path rules own service routing; Compose uses its
+    # private service DNS names.
+    resolver 169.254.169.253 127.0.0.11 8.8.8.8 valid=30s ipv6=off;
+
+    location /api/users {
+        set $user_host "${USER_SERVICE_HOST}";
+        set $user_port "${USER_SERVICE_PORT}";
+        proxy_pass http://$user_host:$user_port;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/products {
+        set $prod_host "${PRODUCT_SERVICE_HOST}";
+        set $prod_port "${PRODUCT_SERVICE_PORT}";
+        proxy_pass http://$prod_host:$prod_port;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/orders {
+        set $order_host "${ORDER_SERVICE_HOST}";
+        set $order_port "${ORDER_SERVICE_PORT}";
+        proxy_pass http://$order_host:$order_port;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

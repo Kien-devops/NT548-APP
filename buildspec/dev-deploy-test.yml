@@ -1,0 +1,27 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_REGION: "ap-southeast-1"
+    CLUSTER_NAME: "nt548-cluster"
+
+phases:
+  install:
+    commands:
+      - "chmod +x scripts/*.sh"
+  pre_build:
+    commands:
+      - "echo Reading image tag from build metadata"
+      - "if [ -f build_metadata.json ]; then export IMAGE_TAG=$(cat build_metadata.json | grep -o '\"imageTag\":\"[^\"]*' | cut -d'\"' -f4); fi"
+      - "test -n \"${IMAGE_TAG:-}\" || { echo 'Missing immutable image tag from build_metadata.json'; exit 1; }"
+      - "echo Deploying ephemeral DEV with IMAGE_TAG $IMAGE_TAG"
+  build:
+    commands:
+      - "echo Step 1 Ephemeral Deploy"
+      - "bash scripts/dev-ephemeral-deploy.sh"
+      - "echo Step 2 Smoke Testing DEV with Cookie nt548-test=true"
+      - "bash scripts/dev-smoke-test.sh"
+  post_build:
+    commands:
+      - "echo Step 3 GUARANTEED CLEANUP"
+      - "bash scripts/dev-cleanup.sh"

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Tổng quan vận hành hệ thống microservices NT548." />
+    <title>Tổng quan · NT548</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="overview">
+    <a class="skip-link" href="#main-content">Bỏ qua điều hướng</a>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Điều hướng chính">
+        <a class="brand" href="index.html" aria-label="NT548 - Trang tổng quan">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><path d="M7 8.5 16 4l9 4.5v14L16 28l-9-5.5v-14Z"/><path d="m11 11 5 2.5 5-2.5M16 13.5V22"/></svg>
+          </span>
+          <span><strong>NT548</strong><small>Service Console</small></span>
+        </a>
+        <nav class="nav-list">
+          <a class="nav-item is-active" href="index.html" aria-current="page">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z"/></svg><span>Tổng quan</span>
+          </a>
+          <a class="nav-item" href="login.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg><span>Đăng nhập</span>
+          </a>
+          <a class="nav-item" href="products.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 8-9 5-9-5 9-5 9 5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg><span>Sản phẩm</span>
+          </a>
+          <a class="nav-item" href="orders.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4H6ZM3 6h18M16 10a4 4 0 0 1-8 0"/></svg><span>Đơn hàng</span>
+          </a>
+        </nav>
+        <div class="sidebar-foot">
+          <div class="environment-card">
+            <div><span class="status-dot" aria-hidden="true"></span><strong>Production</strong></div>
+            <p>AWS ECS Fargate</p><span>ap-southeast-1</span>
+          </div>
+          <p class="course-label">NT548 · Công nghệ DevOps (v1.3.0-account-portable)</p>
+        </div>
+      </aside>
+
+      <div class="main-column">
+        <header class="topbar">
+          <button class="menu-button" type="button" aria-label="Mở menu" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          </button>
+          <div class="breadcrumb"><span>Console</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg><strong>Tổng quan</strong></div>
+          <div class="topbar-actions">
+            <span class="last-sync"><span class="status-dot" aria-hidden="true"></span>Cập nhật <time id="sync-time">vừa xong</time></span>
+            <button class="refresh-button" id="refresh-all" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8M20 3v5h-5"/></svg><span>Làm mới</span>
+            </button>
+          </div>
+        </header>
+
+        <main id="main-content">
+          <section class="page-heading" aria-labelledby="page-title">
+            <div><p class="eyebrow">Tổng quan hệ thống</p><h1 id="page-title">Trạng thái vận hành</h1><p>Theo dõi nhanh các dịch vụ và dữ liệu quan trọng trong hệ thống.</p></div>
+            <div class="data-badge" id="data-mode-badge"><span class="status-dot" aria-hidden="true"></span><span>Đang kết nối API</span></div>
+          </section>
+
+          <section class="metrics" aria-label="Chỉ số tổng quan">
+            <article class="metric-card metric-users">
+              <span class="metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M8 21H5a2 2 0 0 1-2-2v-3m18 0v3a2 2 0 0 1-2 2h-3M9 9h6v6H9z"/></svg></span>
+              <span class="metric-copy"><small>Dịch vụ</small><strong>4</strong><em>Đang hoạt động</em></span>
+            </article>
+            <a class="metric-card metric-products" href="products.html">
+              <span class="metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 8-9 5-9-5 9-5 9 5Z"/><path d="m3 12 9 5 9-5"/></svg></span>
+              <span class="metric-copy"><small>Sản phẩm</small><strong id="product-count">—</strong><em>Trong danh mục</em></span>
+              <svg class="metric-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+            <a class="metric-card metric-orders" href="orders.html">
+              <span class="metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4H6ZM3 6h18"/></svg></span>
+              <span class="metric-copy"><small>Đơn hàng</small><strong id="order-count">—</strong><em>Đang được theo dõi</em></span>
+              <svg class="metric-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+            <article class="metric-card metric-revenue">
+              <span class="metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+              <span class="metric-copy"><small>Tổng giá trị</small><strong id="revenue-total">—</strong><em>Từ đơn hàng hiện có</em></span>
+            </article>
+          </section>
+
+          <section class="dashboard-grid">
+            <article class="panel service-status-panel">
+              <header class="panel-header"><div><p class="panel-kicker">Hạ tầng</p><h2>Trạng thái dịch vụ</h2></div><span class="quiet-label">4 / 4 hoạt động</span></header>
+              <div class="service-list">
+                <div class="service-row"><span class="service-icon tone-blue">FE</span><div><strong>Frontend</strong><small>Nginx · port 80</small></div><span class="health-label"><i></i>Ổn định</span></div>
+                <div class="service-row"><span class="service-icon tone-violet">US</span><div><strong>User Service</strong><small>Node.js · port 5001</small></div><span class="health-label"><i></i>Ổn định</span></div>
+                <div class="service-row"><span class="service-icon tone-amber">PR</span><div><strong>Product Service</strong><small>Python · port 5002</small></div><span class="health-label"><i></i>Ổn định</span></div>
+                <div class="service-row"><span class="service-icon tone-green">OR</span><div><strong>Order Service</strong><small>Node.js · port 5003</small></div><span class="health-label"><i></i>Ổn định</span></div>
+              </div>
+            </article>
+
+            <article class="panel recent-orders-panel">
+              <header class="panel-header"><div><p class="panel-kicker">Gần đây</p><h2>Đơn hàng mới nhất</h2></div><a class="text-link" href="orders.html">Xem tất cả <span aria-hidden="true">→</span></a></header>
+              <div class="table-wrap"><table><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Tổng tiền</th><th>Trạng thái</th></tr></thead><tbody id="order-list" aria-live="polite"></tbody></table></div>
+            </article>
+          </section>
+        </main>
+      </div>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js" defer></script>
+  </body>
+</html>

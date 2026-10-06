@@ -1,0 +1,15 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_REGION: "ap-southeast-1"
+    CLUSTER_NAME: "nt548-cluster"
+
+phases:
+  install:
+    commands:
+      - "chmod +x scripts/*.sh"
+  build:
+    commands:
+      - "echo Deploying approved changes to PROD ECS"
+      - "bash scripts/prod-deploy.sh"

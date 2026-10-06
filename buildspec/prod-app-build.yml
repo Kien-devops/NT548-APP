@@ -1,0 +1,63 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_REGION: "ap-southeast-1"
+    ENVIRONMENT: "prod"
+  exported-variables:
+    - IMAGE_TAG
+    - SCAN_SUMMARY
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+      python: 3.12
+    commands:
+      - "npm ci --prefix be-user-service --omit=dev"
+      - "npm ci --prefix be-order-service --omit=dev"
+      - "pip install -r be-product-service/requirements.txt"
+  pre_build:
+    commands:
+      - "echo Running unit tests and syntax validation"
+      - "node -c be-user-service/server.js"
+      - "node -c be-order-service/server.js"
+      - "python -m py_compile be-product-service/app.py"
+      - "npm test --prefix be-user-service"
+      - "npm test --prefix be-order-service"
+      - "PYTHONPATH=be-product-service python -m unittest discover -s be-product-service -p 'test_*.py'"
+      - "export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)"
+      - "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+      - "COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)"
+      - "test -n \"$COMMIT_HASH\" || { echo 'Missing source commit SHA; refusing a non-immutable image tag'; exit 1; }"
+      - "IMAGE_TAG=$COMMIT_HASH"
+      - "echo Building PROD images with Tag $IMAGE_TAG"
+  build:
+    commands:
+      - "echo Building Docker images"
+      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-user:$IMAGE_TAG ./be-user-service"
+      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-product:$IMAGE_TAG ./be-product-service"
+      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-order:$IMAGE_TAG ./be-order-service"
+      - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-frontend:$IMAGE_TAG ./frontend"
+      - "echo Pushing Docker images to PROD ECR"
+      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-user:$IMAGE_TAG"
+      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-product:$IMAGE_TAG"
+      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-order:$IMAGE_TAG"
+      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-frontend:$IMAGE_TAG"
+  post_build:
+    commands:
+      - "echo Verifying ECR vulnerability scans for all 4 images"
+      - "bash scripts/check-ecr-scans.sh $IMAGE_TAG"
+      - >-
+        export SCAN_SUMMARY=$(python3 -c 'import json; data=json.load(open("ecr-scan-summary.json")); print("; ".join("{repository}@{digest}:C={critical},H={high}".format(**item) for item in data))')
+      - "echo Generating one image definition per ECS service"
+      - "bash scripts/generate-imagedefinitions.sh $AWS_ACCOUNT_ID $AWS_REGION $IMAGE_TAG"
+      - "echo PROD application build and scan finished successfully"
+
+artifacts:
+  files:
+    - imagedefinitions-frontend.json
+    - imagedefinitions-user.json
+    - imagedefinitions-product.json
+    - imagedefinitions-order.json
+    - ecr-scan-summary.json
