@@ -40,10 +40,10 @@ phases:
       - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-order:$IMAGE_TAG ./be-order-service"
       - "docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-frontend:$IMAGE_TAG ./frontend"
       - "echo Pushing Docker images to PROD ECR"
-      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-user:$IMAGE_TAG"
-      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-product:$IMAGE_TAG"
-      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-order:$IMAGE_TAG"
-      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-frontend:$IMAGE_TAG"
+      - "aws ecr describe-images --repository-name nt548-prod-user --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-prod-user tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-user:$IMAGE_TAG"
+      - "aws ecr describe-images --repository-name nt548-prod-product --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-prod-product tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-product:$IMAGE_TAG"
+      - "aws ecr describe-images --repository-name nt548-prod-order --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-prod-order tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-order:$IMAGE_TAG"
+      - "aws ecr describe-images --repository-name nt548-prod-frontend --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-prod-frontend tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-prod-frontend:$IMAGE_TAG"
   post_build:
     commands:
       - "echo Verifying ECR vulnerability scans for all 4 images"

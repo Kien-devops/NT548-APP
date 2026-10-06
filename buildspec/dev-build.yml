@@ -41,10 +41,10 @@ phases:
   post_build:
     commands:
       - "echo Pushing images to ECR DEV"
-      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-user:$IMAGE_TAG"
-      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-product:$IMAGE_TAG"
-      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-order:$IMAGE_TAG"
-      - "docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-frontend:$IMAGE_TAG"
+      - "aws ecr describe-images --repository-name nt548-dev-user --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-dev-user tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-user:$IMAGE_TAG"
+      - "aws ecr describe-images --repository-name nt548-dev-product --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-dev-product tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-product:$IMAGE_TAG"
+      - "aws ecr describe-images --repository-name nt548-dev-order --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-dev-order tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-order:$IMAGE_TAG"
+      - "aws ecr describe-images --repository-name nt548-dev-frontend --image-ids imageTag=$IMAGE_TAG --region $AWS_REGION >/dev/null 2>&1 && echo 'nt548-dev-frontend tag exists, skipping push' || docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/nt548-dev-frontend:$IMAGE_TAG"
       - "echo Generating build metadata"
       - "printf '{\"commitHash\":\"%s\",\"imageTag\":\"%s\",\"environment\":\"dev\"}' \"$COMMIT_HASH\" \"$IMAGE_TAG\" > build_metadata.json"
       - "echo Build completed successfully"
