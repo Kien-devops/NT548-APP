@@ -44,9 +44,10 @@ case "$SERVICE" in
         test -f frontend/src/app.js || { echo "❌ Missing frontend/src/app.js"; exit 1; }
         ;;
     database)
-        echo "   [TEST] Validating database initialization scripts"
-        test -f database/nt548_test_data.sql || { echo "❌ Missing database/nt548_test_data.sql"; exit 1; }
-        grep -q "INSERT INTO" database/nt548_test_data.sql || { echo "❌ database SQL appears invalid"; exit 1; }
+        echo "   [TEST] Validating PostgreSQL initializer syntax"
+        node --check database/init.js
+        echo "   [TEST] Testing migrations, backend roles and admin in disposable PostgreSQL"
+        bash scripts/test-database.sh
         ;;
     *)
         echo "❌ Unknown service: $SERVICE"

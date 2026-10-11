@@ -18,7 +18,8 @@ server {
     # Resolve upstreams at request time. PROD points these variables at the
     # shared ALB because ALB path rules own service routing; Compose uses its
     # private service DNS names.
-    resolver 169.254.169.253 127.0.0.11 8.8.8.8 valid=30s ipv6=off;
+    # Use the resolver for this deployment: AWS VPC by default, Docker in Compose.
+    resolver ${DNS_RESOLVER} valid=30s ipv6=off;
 
     location /api/users {
         set $user_host "${USER_SERVICE_HOST}";

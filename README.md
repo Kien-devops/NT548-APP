@@ -14,7 +14,7 @@ Hạ tầng nền tảng (VPC, ALB, ECS Cluster, ECR Repositories, IAM Roles, Pi
 | [be-user-service](./be-user-service) | Node.js / Express | 5001 | Xác thực người dùng, băm mật khẩu bảo mật (Scrypt), cấp phát JWT |
 | [be-product-service](./be-product-service) | Python / Flask | 5002 | API quản lý danh mục sản phẩm (yêu cầu JWT Bearer token) |
 | [be-order-service](./be-order-service) | Node.js / Express | 5003 | API quản lý đơn hàng (yêu cầu JWT Bearer token) |
-| [database](./database) | SQL Migrations | 3306 | Script khởi tạo schema cơ sở dữ liệu |
+| [database](./database) | PostgreSQL 16 / Node.js | 5432 (nội bộ Docker) | Migration, tài khoản DB và admin ban đầu |
 
 ---
 
@@ -67,19 +67,51 @@ Hạ tầng nền tảng (VPC, ALB, ECS Cluster, ECR Repositories, IAM Roles, Pi
 
 ---
 
-## 3. Khởi chạy thử nghiệm cục bộ (Local Development)
+## 5. Khởi chạy cục bộ với PostgreSQL
 
-Yêu cầu Docker và Docker Compose:
+Yêu cầu Docker Desktop đang chạy Linux containers và Docker Compose. Không cần cài PostgreSQL hoặc Node.js trên máy để chạy stack.
 
-```bash
-# 1. Sao chép biến môi trường
-cp .env.example .env
+**Bước 1 — Tạo `.env` lần đầu** tại thư mục gốc của repo (không ghi đè nếu đã có):
 
-# 2. Khởi động toàn bộ stack microservices
-docker compose up -d
-
-# 3. Kiểm tra trạng thái
-docker compose ps
+```powershell
+Copy-Item .env.example .env
 ```
 
-Truy cập giao diện tại: `http://localhost:8080` (hoặc cổng cấu hình trong `.env`).
+Trong `.env`, thay các giá trị `CHANGE_ME`, đặc biệt `POSTGRES_PASSWORD`, `USER_DB_PASSWORD`, `PRODUCT_DB_PASSWORD`, `ORDER_DB_PASSWORD`, `ADMIN_PASSWORD` và `JWT_SECRET` (chuỗi ngẫu nhiên ít nhất 32 ký tự). Chọn `ADMIN_EMAIL` cho admin ban đầu và đặt `APP_PORT=7979` nếu muốn dùng cổng 7979. Không commit `.env`; `.env.example` chỉ chứa giá trị mẫu.
+
+**Bước 2 — Build và khởi động ứng dụng:**
+
+```powershell
+docker compose up --build -d frontend
+```
+
+Compose tự khởi động các dependency theo thứ tự: PostgreSQL healthy → `db-init` chạy thành công → ba backend → frontend. `db-init` chạy migration theo tên file, tạo ba tài khoản PostgreSQL và tạo admin với mật khẩu băm scrypt. MySQL còn trong Compose để tham khảo cấu hình cũ; lệnh trên không khởi động MySQL vì các backend local đều dùng PostgreSQL.
+
+**Bước 3 — Kiểm tra và đăng nhập:**
+
+```powershell
+docker compose ps -a
+docker compose logs db-init
+```
+
+`db-init` có trạng thái `Exited (0)` là bình thường: đây là tác vụ khởi tạo chạy một lần rồi thoát. Các service còn lại phải `healthy`. Mở `http://localhost:7979` (hoặc cổng `APP_PORT` của bạn), đăng nhập bằng admin đã tạo.
+
+### Chạy lại migration và bảo toàn dữ liệu
+
+```powershell
+docker compose run --build --rm db-init
+```
+
+Script ghi phiên bản và checksum vào `schema_migrations`, bỏ qua migration đã chạy và không ghi đè sản phẩm, đơn hàng hoặc admin hiện có. Nếu cần đổi schema, thêm file mới như `004_order_items.sql`; không sửa migration đã áp dụng. Một lần chạy dùng transaction: lỗi sẽ rollback và backend sẽ không khởi động khi bước init thất bại.
+
+Ba role `nt548_user`, `nt548_product`, `nt548_order` chỉ được `SELECT` trên bảng tương ứng `users`, `products`, `orders`. Script đồng bộ mật khẩu các role với các biến `*_DB_PASSWORD` mỗi lần chạy. Sau khi đổi mật khẩu role và chạy init, chạy lại `docker compose up -d frontend` để cập nhật môi trường backend.
+
+`ADMIN_PASSWORD` chỉ tạo admin lần đầu: sửa biến này không đổi mật khẩu admin đã lưu. Tương tự, `POSTGRES_PASSWORD` của image PostgreSQL chỉ có tác dụng khởi tạo volume mới; đổi biến không tự đổi mật khẩu PostgreSQL đã có. Cấu hình này dành cho Docker local; triển khai AWS cần endpoint, TLS và Secrets riêng.
+
+Volume PostgreSQL giữ dữ liệu qua các lần dừng/chạy. Không dùng `docker compose down -v` nếu muốn giữ dữ liệu.
+
+### Kiểm thử DB và bàn giao cho IaC
+
+Trong Git Bash/Linux, chạy `bash scripts/test-service.sh database` để kiểm thử initializer trên một PostgreSQL tạm riêng. Runner cần Docker đang chạy và Node.js; tự dọn container, network và image kiểm thử. Pipeline DEV/PROD gọi runner này khi database thay đổi.
+
+Thông tin cấu hình backend, migration và các điểm cần phối hợp khi lên AWS nằm trong [bàn giao PostgreSQL cho IaC](docs/postgresql-handoff.md).

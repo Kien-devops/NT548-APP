@@ -1,16 +1,20 @@
 const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
+const pool = require("./db");
 
 const app = express();
 const PORT = Number(process.env.PORT || 5003);
 const JWT_SECRET = process.env.JWT_SECRET || "nt548-local-development-secret";
 
-const orders = [
-  { order_id: "ORD-9021", customer: "Nguyễn Văn A", total: 49.99, status: "COMPLETED" },
-  { order_id: "ORD-9022", customer: "Trần Thị B", total: 118.5, status: "PROCESSING" },
-  { order_id: "ORD-9023", customer: "Lê Văn C", total: 35.0, status: "COMPLETED" },
-];
+function publicOrder(row) {
+  return {
+    order_id: row.order_id,
+    customer: row.customer,
+    total: Number(row.total),
+    status: row.status,
+  };
+}
 
 app.disable("x-powered-by");
 app.use(cors());
@@ -44,14 +48,28 @@ app.get(["/health", "/api/orders/health"], (_req, res) => {
   res.status(200).json({ status: "healthy", service: "order-service", port: PORT });
 });
 
-app.get("/api/orders", authenticate, (_req, res) => {
-  res.status(200).json(orders);
+app.get("/api/orders", authenticate, async (_req, res, next) => {
+  try {
+    const result = await pool.query(
+      "SELECT order_id, customer, total, status FROM orders ORDER BY order_id"
+    );
+    res.status(200).json(result.rows.map(publicOrder));
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.get("/api/orders/:orderId", authenticate, (req, res) => {
-  const order = orders.find((item) => item.order_id === req.params.orderId);
-  if (!order) return res.status(404).json({ error: "NOT_FOUND", message: "Không tìm thấy đơn hàng." });
-  return res.status(200).json(order);
+app.get("/api/orders/:orderId", authenticate, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      "SELECT order_id, customer, total, status FROM orders WHERE order_id = $1",
+      [req.params.orderId]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: "NOT_FOUND", message: "Không tìm thấy đơn hàng." });
+    return res.status(200).json(publicOrder(result.rows[0]));
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.use((_req, res) => {

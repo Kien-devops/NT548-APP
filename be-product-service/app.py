@@ -6,18 +6,30 @@ from flask import Flask, jsonify
 from flask import request
 from flask_cors import CORS
 
+import psycopg
+from psycopg.rows import dict_row
+
 
 app = Flask(__name__)
 CORS(app)
 PORT = int(os.environ.get("PORT", "5002"))
 JWT_SECRET = os.environ.get("JWT_SECRET", "nt548-local-development-secret")
 
-PRODUCTS = [
-    {"id": 101, "name": "AWS Fargate Cluster v2", "category": "Cloud Computing", "price": 49.99},
-    {"id": 102, "name": "Terraform Enterprise Blueprint", "category": "DevOps Tools", "price": 89.00},
-    {"id": 103, "name": "Docker & Kubernetes Master", "category": "Containerization", "price": 29.50},
-    {"id": 104, "name": "Prometheus & Grafana", "category": "Observability", "price": 35.00},
-]
+def get_db_connection():
+    return psycopg.connect(
+        host=os.environ["DB_HOST"],
+        port=os.environ["DB_PORT"],
+        dbname=os.environ["DB_NAME"],
+        user=os.environ["DB_USER"],
+        password=os.environ["DB_PASSWORD"],
+        connect_timeout=5,
+        row_factory=dict_row,
+    )
+
+
+def serialize_product(product):
+    product["price"] = float(product["price"])
+    return product
 
 
 def require_auth(handler):
@@ -53,17 +65,49 @@ def health():
 @app.get("/api/products")
 @require_auth
 def list_products():
-    return jsonify(PRODUCTS), 200
+    with get_db_connection() as conn:
+        products = conn.execute(
+            """
+            SELECT id, name, category, price
+            FROM products
+            WHERE is_active = TRUE
+            ORDER BY id
+            """
+        ).fetchall()
+
+    return jsonify(
+        [serialize_product(product) for product in products]
+    ), 200
 
 
 @app.get("/api/products/<int:product_id>")
 @require_auth
 def get_product(product_id):
-    product = next((item for item in PRODUCTS if item["id"] == product_id), None)
-    if product is None:
-        return jsonify({"error": "NOT_FOUND", "message": "Không tìm thấy sản phẩm."}), 404
-    return jsonify(product), 200
+    with get_db_connection() as conn:
+        product = conn.execute(
+            """
+            SELECT id, name, category, price
+            FROM products
+            WHERE id = %s AND is_active = TRUE
+            """,
+            (product_id,),
+        ).fetchone()
 
+    if product is None:
+        return jsonify({
+            "error": "NOT_FOUND",
+            "message": "Không tìm thấy sản phẩm.",
+        }), 404
+
+    return jsonify(serialize_product(product)), 200
+
+@app.errorhandler(psycopg.Error)
+def database_error(error):
+    app.logger.exception("Product database query failed")
+    return jsonify({
+        "error": "DATABASE_UNAVAILABLE",
+        "message": "Không thể đọc dữ liệu sản phẩm.",
+    }), 503
 
 @app.errorhandler(404)
 def route_not_found(_error):

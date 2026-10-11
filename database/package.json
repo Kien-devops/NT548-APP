@@ -1,0 +1,14 @@
+{
+  "name": "nt548-database-init",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PostgreSQL migrations, backend roles and initial admin for local development",
+  "scripts": {
+    "start": "node init.js",
+    "check": "node --check init.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  }
+}

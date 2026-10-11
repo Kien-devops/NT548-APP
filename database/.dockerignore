@@ -1,0 +1,4 @@
+node_modules
+test
+.env
+nt548_test_data.sql

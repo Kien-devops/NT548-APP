@@ -3,13 +3,14 @@ FROM nginx:alpine
 RUN apk update && apk upgrade --no-cache
 
 ENV ENVIRONMENT=local \
+    DNS_RESOLVER=169.254.169.253 \
     USER_SERVICE_HOST=be-user-service \
     USER_SERVICE_PORT=5001 \
     PRODUCT_SERVICE_HOST=be-product-service \
     PRODUCT_SERVICE_PORT=5002 \
     ORDER_SERVICE_HOST=be-order-service \
     ORDER_SERVICE_PORT=5003 \
-    NGINX_ENVSUBST_FILTER="^(ENVIRONMENT|USER_SERVICE_HOST|USER_SERVICE_PORT|PRODUCT_SERVICE_HOST|PRODUCT_SERVICE_PORT|ORDER_SERVICE_HOST|ORDER_SERVICE_PORT)$"
+    NGINX_ENVSUBST_FILTER="^(ENVIRONMENT|DNS_RESOLVER|USER_SERVICE_HOST|USER_SERVICE_PORT|PRODUCT_SERVICE_HOST|PRODUCT_SERVICE_PORT|ORDER_SERVICE_HOST|ORDER_SERVICE_PORT)$"
 
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY src/ /usr/share/nginx/html/
@@ -17,7 +18,7 @@ COPY src/ /usr/share/nginx/html/
 # Validate the rendered configuration during the image build. Restricting
 # envsubst to the uppercase deployment variables preserves native nginx
 # variables such as $user_host, $host and $remote_addr.
-RUN envsubst '${ENVIRONMENT} ${USER_SERVICE_HOST} ${USER_SERVICE_PORT} ${PRODUCT_SERVICE_HOST} ${PRODUCT_SERVICE_PORT} ${ORDER_SERVICE_HOST} ${ORDER_SERVICE_PORT}' \
+RUN envsubst '${ENVIRONMENT} ${DNS_RESOLVER} ${USER_SERVICE_HOST} ${USER_SERVICE_PORT} ${PRODUCT_SERVICE_HOST} ${PRODUCT_SERVICE_PORT} ${ORDER_SERVICE_HOST} ${ORDER_SERVICE_PORT}' \
       < /etc/nginx/templates/default.conf.template \
       > /etc/nginx/conf.d/default.conf \
     && nginx -t \
