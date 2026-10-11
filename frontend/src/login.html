@@ -3,72 +3,109 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Đăng nhập vào hệ thống NT548 Service Console." />
-    <title>Đăng nhập · NT548</title>
+    <meta name="description" content="Đăng nhập vào NT548 Commerce Console để quản lý sản phẩm và đơn hàng." />
+    <title>Đăng nhập · NT548 Commerce</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="auth-page" data-page="login">
     <a class="skip-link" href="#login-form">Đi đến biểu mẫu đăng nhập</a>
-    <main class="auth-layout">
-      <section class="auth-context" aria-labelledby="auth-brand-title">
-        <a class="auth-brand" href="index.html" aria-label="NT548 - Trang tổng quan">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32"><path d="M7 8.5 16 4l9 4.5v14L16 28l-9-5.5v-14Z"/><path d="m11 11 5 2.5 5-2.5M16 13.5V22"/></svg>
-          </span>
-          <span><strong>NT548</strong><small>Service Console</small></span>
-        </a>
-        <div class="auth-context-copy">
-          <p class="auth-overline">Hệ thống vận hành</p>
-          <h1 id="auth-brand-title">Quản lý dịch vụ tại một nơi.</h1>
-          <p>Truy cập bảng điều khiển sản phẩm, đơn hàng và trạng thái hạ tầng triển khai trên AWS.</p>
-        </div>
-        <div class="auth-system-state">
-          <span class="status-dot" aria-hidden="true"></span>
-          <div><strong>Hệ thống ổn định</strong><small>4 dịch vụ đang hoạt động</small></div>
-        </div>
-      </section>
 
-      <section class="auth-form-side" aria-labelledby="login-title">
-        <div class="auth-card">
-          <a class="back-link" href="index.html">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
-            Quay lại trang tổng quan
-          </a>
-          <div class="auth-heading">
-            <p class="eyebrow">NT548 Console</p>
-            <h2 id="login-title">Đăng nhập</h2>
-            <p>Nhập thông tin tài khoản để tiếp tục.</p>
+    <main class="auth-layout">
+      <header class="auth-topbar">
+        <a class="auth-brand" href="index.html" aria-label="NT548 Commerce - Trang tổng quan">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><path d="M8 12h16l-1.2 14H9.2L8 12Z"/><path d="M12 14V9a4 4 0 0 1 8 0v5"/></svg>
+          </span>
+          <span><strong>NT548</strong><small>Commerce Console</small></span>
+        </a>
+        <span class="auth-topbar-note">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
+          <span>Cổng quản trị người bán</span>
+        </span>
+      </header>
+
+      <div class="auth-content">
+        <section class="auth-context" aria-labelledby="auth-brand-title">
+          <div class="auth-context-copy">
+            <p class="auth-overline"><span></span>Dành cho nhà bán hàng</p>
+            <h2 id="auth-brand-title">Quản lý cửa hàng<br /><em>nhẹ nhàng hơn.</em></h2>
+            <p>Theo dõi sản phẩm, đơn hàng và hoạt động kinh doanh trong một không gian trực quan, dễ sử dụng.</p>
           </div>
 
-          <form id="login-form" class="login-form" novalidate>
-            <div class="form-field">
-              <label for="email">Email</label>
-              <div class="input-wrap">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2Z"/><path d="m22 6-10 7L2 6"/></svg>
-                <input id="email" name="email" type="email" autocomplete="email" placeholder="name@example.com" required />
+          <ul class="commerce-benefits" aria-label="Lợi ích nổi bật">
+            <li><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg></span>Kiểm soát đơn hàng tập trung</li>
+            <li><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg></span>Dữ liệu sản phẩm cập nhật nhanh</li>
+          </ul>
+
+          <div class="commerce-visual" aria-hidden="true">
+            <div class="commerce-preview-card">
+              <div class="preview-card-head">
+                <span class="preview-icon"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4H6ZM3 6h18"/></svg></span>
+                <span><small>Đơn hàng hôm nay</small><strong>24 đơn</strong></span>
+                <em>+18%</em>
               </div>
-              <p class="field-error" id="email-error"></p>
+              <div class="preview-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="preview-card-foot"><span>08:00</span><span>12:00</span><span>18:00</span></div>
+            </div>
+            <div class="floating-order-card">
+              <span class="floating-product">PR</span>
+              <span><small>Đơn hàng mới</small><strong>#ORD-9022</strong></span>
+              <em>$118.50</em>
+            </div>
+            <div class="floating-status-card"><i></i><span><strong>4 dịch vụ</strong><small>Đang kết nối</small></span></div>
+          </div>
+        </section>
+
+        <section class="auth-form-side" aria-labelledby="login-title">
+          <div class="auth-card">
+            <div class="auth-heading">
+              <p class="eyebrow">Chào mừng trở lại</p>
+              <h1 id="login-title">Đăng nhập tài khoản</h1>
+              <p>Tiếp tục quản lý cửa hàng và theo dõi đơn hàng của bạn.</p>
             </div>
 
-            <div class="form-field">
-              <label for="password">Mật khẩu</label>
-              <div class="input-wrap">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" minlength="6" required />
-                <button class="password-toggle" type="button" aria-label="Hiện mật khẩu" aria-pressed="false">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
+            <form id="login-form" class="login-form" novalidate>
+              <div class="form-field">
+                <label for="email">Email <span aria-hidden="true">*</span></label>
+                <div class="input-wrap">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2Z"/><path d="m22 6-10 7L2 6"/></svg>
+                  <input id="email" name="email" type="email" autocomplete="email" placeholder="name@example.com" aria-describedby="email-error" required />
+                </div>
+                <p class="field-error" id="email-error" role="status" aria-live="polite"></p>
               </div>
-              <p class="field-error" id="password-error"></p>
-            </div>
 
-            <label class="remember-field"><input type="checkbox" name="remember" /><span>Duy trì đăng nhập trên thiết bị này</span></label>
-            <button class="login-button" type="submit"><span>Đăng nhập</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-            <p class="auth-note">Thông tin đăng nhập được cấu hình bằng <code>ADMIN_EMAIL</code> và <code>ADMIN_PASSWORD</code> trong môi trường chạy backend.</p>
-          </form>
-        </div>
-      </section>
+              <div class="form-field">
+                <label for="password">Mật khẩu <span aria-hidden="true">*</span></label>
+                <div class="input-wrap">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" aria-describedby="password-error" minlength="6" required />
+                  <button class="password-toggle" type="button" aria-label="Hiện mật khẩu" aria-pressed="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+                <p class="field-error" id="password-error" role="status" aria-live="polite"></p>
+              </div>
+
+              <label class="remember-field">
+                <input type="checkbox" name="remember" />
+                <span>Duy trì đăng nhập trên thiết bị này</span>
+              </label>
+
+              <button class="login-button" type="submit">
+                <span class="login-button-label">Đăng nhập</span>
+                <svg class="login-button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </button>
+
+              <div class="auth-security-note">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
+                <p><strong>Đăng nhập an toàn</strong><span>Phiên làm việc được bảo vệ và tự động hết hạn.</span></p>
+              </div>
+            </form>
+          </div>
+        </section>
+      </div>
     </main>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="app.js" defer></script>
   </body>

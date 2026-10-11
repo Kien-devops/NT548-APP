@@ -24,14 +24,20 @@ const state = { users: [], products: [], orders: [], usesDemo: false };
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 function getAccessToken() {
-  return sessionStorage.getItem("nt548_access_token");
+  return sessionStorage.getItem("nt548_access_token") || localStorage.getItem("nt548_access_token");
+}
+
+function clearAuthStorage() {
+  for (const storage of [sessionStorage, localStorage]) {
+    storage.removeItem("nt548_access_token");
+    storage.removeItem("nt548_current_user");
+  }
 }
 
 function redirectToLogin() {
   const currentPage = window.location.pathname.split("/").pop() || "index.html";
   sessionStorage.setItem("nt548_return_to", currentPage);
-  sessionStorage.removeItem("nt548_access_token");
-  sessionStorage.removeItem("nt548_current_user");
+  clearAuthStorage();
   window.location.replace("login.html");
 }
 
@@ -88,9 +94,14 @@ function renderProducts() {
   target.innerHTML = state.products.length
     ? state.products.map((product) => `
       <article class="product-card">
-        <span class="product-glyph" aria-hidden="true">${escapeHtml(productGlyph(product.category))}</span>
-        <div class="product-title"><strong>${escapeHtml(product.name)}</strong><small>Mã sản phẩm #${escapeHtml(product.id)}</small><span class="category-pill">${escapeHtml(product.category)}</span></div>
-        <span class="product-price">${currency.format(Number(product.price))}</span>
+        <div class="product-media">
+          <span class="product-glyph" aria-hidden="true">${escapeHtml(productGlyph(product.category))}</span>
+          <span class="product-stock"><i aria-hidden="true"></i>Đang bán</span>
+        </div>
+        <div class="product-body">
+          <div class="product-title"><span class="category-pill">${escapeHtml(product.category)}</span><strong>${escapeHtml(product.name)}</strong><small>Mã sản phẩm #${escapeHtml(product.id)}</small></div>
+          <div class="product-card-foot"><span><small>Giá bán</small><strong class="product-price">${currency.format(Number(product.price))}</strong></span><span class="product-state">Sẵn sàng</span></div>
+        </div>
       </article>`).join("")
     : '<div class="empty-state">Chưa có sản phẩm.</div>';
   const average = state.products.length ? state.products.reduce((sum, product) => sum + Number(product.price || 0), 0) / state.products.length : 0;
@@ -107,7 +118,7 @@ function renderOrders() {
   target.innerHTML = visibleOrders.length
     ? visibleOrders.map((order) => {
       const status = statusMeta(order.status);
-      return `<tr><td class="order-id">${escapeHtml(order.order_id)}</td><td>${escapeHtml(order.customer)}</td><td class="money">${currency.format(Number(order.total))}</td><td><span class="status-pill ${status.className}">${escapeHtml(status.label)}</span></td></tr>`;
+      return `<tr><td class="order-id" data-label="Mã đơn">${escapeHtml(order.order_id)}</td><td data-label="Khách hàng">${escapeHtml(order.customer)}</td><td class="money" data-label="Tổng tiền">${currency.format(Number(order.total))}</td><td data-label="Trạng thái"><span class="status-pill ${status.className}">${escapeHtml(status.label)}</span></td></tr>`;
     }).join("")
     : '<tr><td colspan="4" class="empty-state">Chưa có đơn hàng.</td></tr>';
   text("order-count", state.orders.length);
@@ -137,11 +148,14 @@ function renderSection(section) {
   if (section === "products") renderProducts();
   if (section === "orders") renderOrders();
   if (page === "overview") renderOverviewMetrics();
+  const target = document.getElementById(section === "users" ? "user-list" : section === "products" ? "product-list" : "order-list");
+  target?.removeAttribute("aria-busy");
 }
 
 function showLoading(section) {
   const target = document.getElementById(section === "users" ? "user-list" : section === "products" ? "product-list" : "order-list");
   if (!target) return;
+  target.setAttribute("aria-busy", "true");
   if (target.tagName === "TBODY") target.innerHTML = '<tr><td colspan="4"><div class="skeleton"></div><div class="skeleton"></div></td></tr>';
   else target.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
 }
@@ -187,30 +201,64 @@ function sectionsForPage() {
 
 async function refreshPage() {
   const button = document.getElementById("refresh-all");
-  if (button) { button.classList.add("is-loading"); button.disabled = true; }
+  if (button) { button.classList.add("is-loading"); button.disabled = true; button.setAttribute("aria-busy", "true"); }
   state.usesDemo = false;
   await Promise.all(sectionsForPage().map(loadSection));
   text("sync-time", new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit" }).format(new Date()));
-  if (button) { button.classList.remove("is-loading"); button.disabled = false; }
+  if (button) { button.classList.remove("is-loading"); button.disabled = false; button.removeAttribute("aria-busy"); }
   showToast(state.usesDemo ? "Backend chưa sẵn sàng — đang hiển thị dữ liệu mẫu." : "Dữ liệu đã được cập nhật.");
 }
 
 document.getElementById("refresh-all")?.addEventListener("click", refreshPage);
 
 const menuButton = document.querySelector(".menu-button");
+function closeMenu() {
+  document.body.classList.remove("menu-open");
+  menuButton?.setAttribute("aria-expanded", "false");
+  menuButton?.setAttribute("aria-label", "Mở menu");
+}
+
 menuButton?.addEventListener("click", () => {
   const isOpen = document.body.classList.toggle("menu-open");
   menuButton.setAttribute("aria-expanded", String(isOpen));
   menuButton.setAttribute("aria-label", isOpen ? "Đóng menu" : "Mở menu");
 });
 
-document.querySelectorAll(".nav-item").forEach((item) => item.addEventListener("click", () => document.body.classList.remove("menu-open")));
+document.querySelectorAll(".nav-item").forEach((item) => item.addEventListener("click", closeMenu));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && document.body.classList.contains("menu-open")) {
+    closeMenu();
+    menuButton?.focus();
+  }
+});
+document.addEventListener("click", (event) => {
+  if (!document.body.classList.contains("menu-open")) return;
+  if (event.target instanceof Node && !document.querySelector(".sidebar")?.contains(event.target) && !menuButton?.contains(event.target)) closeMenu();
+});
+
+function initializeCurrentUser() {
+  const rawUser = sessionStorage.getItem("nt548_current_user") || localStorage.getItem("nt548_current_user");
+  if (!rawUser) return;
+  try {
+    const user = JSON.parse(rawUser);
+    const displayName = user.name || user.email?.split("@")[0] || "Quản trị viên";
+    document.querySelectorAll("[data-user-name]").forEach((element) => { element.textContent = displayName; });
+    document.querySelectorAll("[data-user-avatar]").forEach((element) => { element.textContent = initials(displayName).slice(0, 2) || "QT"; });
+  } catch {
+    // Keep the safe default account label when stored profile data is malformed.
+  }
+}
 
 function initializeLogin() {
   const form = document.getElementById("login-form");
   const passwordInput = document.getElementById("password");
   const passwordToggle = document.querySelector(".password-toggle");
+  const rememberInput = form?.elements.namedItem("remember");
   if (!form || !passwordInput) return;
+
+  if (rememberInput instanceof HTMLInputElement) {
+    rememberInput.checked = Boolean(localStorage.getItem("nt548_access_token"));
+  }
 
   passwordToggle?.addEventListener("click", () => {
     const shouldShow = passwordInput.type === "password";
@@ -225,6 +273,7 @@ function initializeLogin() {
     const emailError = document.getElementById("email-error");
     const passwordError = document.getElementById("password-error");
     const submitButton = form.querySelector(".login-button");
+    const submitLabel = submitButton?.querySelector(".login-button-label");
     const emailValid = Boolean(emailInput?.value.trim()) && emailInput.validity.valid;
     const passwordValid = passwordInput.value.length >= 6;
 
@@ -233,9 +282,16 @@ function initializeLogin() {
     if (emailError) emailError.textContent = emailValid ? "" : "Vui lòng nhập một địa chỉ email hợp lệ.";
     if (passwordError) passwordError.textContent = passwordValid ? "" : "Mật khẩu cần có ít nhất 6 ký tự.";
 
-    if (!emailValid || !passwordValid) return;
+    if (!emailValid || !passwordValid) {
+      (emailValid ? passwordInput : emailInput)?.focus();
+      return;
+    }
     submitButton?.classList.add("is-loading");
-    if (submitButton) submitButton.disabled = true;
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.setAttribute("aria-busy", "true");
+    }
+    if (submitLabel) submitLabel.textContent = "Đang đăng nhập...";
 
     try {
       const response = await fetch("/api/users/login", {
@@ -246,42 +302,84 @@ function initializeLogin() {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         if (passwordError) passwordError.textContent = payload.message || "Không thể đăng nhập với thông tin này.";
+        passwordInput.setAttribute("aria-invalid", "true");
+        passwordInput.focus();
         return;
       }
 
-      sessionStorage.setItem("nt548_access_token", payload.access_token);
-      sessionStorage.setItem("nt548_current_user", JSON.stringify(payload.user));
-      showToast("Đăng nhập thành công. Đang mở bảng điều khiển...");
       const requestedPage = sessionStorage.getItem("nt548_return_to");
       const allowedPages = new Set(["index.html", "products.html", "orders.html"]);
+      const authStorage = rememberInput instanceof HTMLInputElement && rememberInput.checked ? localStorage : sessionStorage;
+      clearAuthStorage();
+      authStorage.setItem("nt548_access_token", payload.access_token);
+      authStorage.setItem("nt548_current_user", JSON.stringify(payload.user));
       sessionStorage.removeItem("nt548_return_to");
+      showToast("Đăng nhập thành công. Đang mở bảng điều khiển...");
       window.setTimeout(() => window.location.assign(allowedPages.has(requestedPage) ? requestedPage : "index.html"), 450);
     } catch {
       showToast("Không thể kết nối Auth Service. Hãy kiểm tra backend đang chạy.");
     } finally {
       submitButton?.classList.remove("is-loading");
-      if (submitButton) submitButton.disabled = false;
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.removeAttribute("aria-busy");
+      }
+      if (submitLabel) submitLabel.textContent = "Đăng nhập";
     }
   });
+
+  for (const input of [form.elements.namedItem("email"), passwordInput]) {
+    if (!(input instanceof HTMLInputElement)) continue;
+    input.addEventListener("input", () => {
+      input.removeAttribute("aria-invalid");
+      const error = document.getElementById(`${input.id}-error`);
+      if (error) error.textContent = "";
+    });
+  }
 }
 
 function initializeAuthNavigation() {
   if (!getAccessToken()) return;
-  document.querySelectorAll('.nav-item[href="login.html"]').forEach((link) => {
-    const label = link.querySelector("span");
-    if (label) label.textContent = "Đăng xuất";
+  document.querySelectorAll("[data-auth-link]").forEach((link) => {
     link.setAttribute("href", "#logout");
     link.addEventListener("click", (event) => {
       event.preventDefault();
-      sessionStorage.removeItem("nt548_access_token");
-      sessionStorage.removeItem("nt548_current_user");
+      clearAuthStorage();
       window.location.assign("login.html");
     });
   });
 }
 
+function initializeInteractionMotion() {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const selector = "button, .nav-item, .sidebar-logout, a.metric-card, .text-link";
+
+  document.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || !(event.target instanceof Element)) return;
+    const control = event.target.closest(selector);
+    if (!(control instanceof HTMLElement) || control.matches(":disabled,[aria-disabled='true']")) return;
+
+    const bounds = control.getBoundingClientRect();
+    const size = Math.max(bounds.width, bounds.height) * 1.35;
+    const ripple = document.createElement("span");
+    ripple.className = "interaction-ripple";
+    ripple.setAttribute("aria-hidden", "true");
+    ripple.style.width = `${size}px`;
+    ripple.style.height = `${size}px`;
+    ripple.style.left = `${event.clientX - bounds.left}px`;
+    ripple.style.top = `${event.clientY - bounds.top}px`;
+
+    control.querySelector(":scope > .interaction-ripple")?.remove();
+    control.append(ripple);
+    ripple.addEventListener("animationend", () => ripple.remove(), { once: true });
+  });
+}
+
+initializeInteractionMotion();
+
 if (page === "login") initializeLogin();
 else if (getAccessToken()) {
+  initializeCurrentUser();
   initializeAuthNavigation();
   refreshPage();
 }
