@@ -2,3 +2,9 @@ Flask==3.1.2
 flask-cors==6.0.1
 gunicorn==23.0.0
 PyJWT==2.10.1
+opentelemetry-distro==0.66b1
+opentelemetry-exporter-otlp-proto-grpc==1.45.1
+opentelemetry-instrumentation-flask==0.66b1
+opentelemetry-instrumentation-logging==0.66b1
+opentelemetry-instrumentation-pymysql==0.66b1
+PyMySQL==1.1.2

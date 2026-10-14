@@ -33,12 +33,13 @@
             <article class="summary-card"><span>Giá trung bình</span><strong id="average-price">—</strong></article>
           </section>
           <section class="panel page-panel product-catalog">
-            <header class="panel-header"><div><p class="panel-kicker">Danh mục gian hàng</p><h2>Tất cả sản phẩm</h2></div><span class="quiet-label" id="product-total-label">0 sản phẩm</span></header>
+            <header class="panel-header"><div><p class="panel-kicker">Danh mục gian hàng</p><h2>Tất cả sản phẩm</h2></div><div class="panel-actions"><span class="quiet-label" id="product-total-label">0 sản phẩm</span><button class="primary-action" type="button" data-create="products">Thêm sản phẩm</button></div></header>
             <div class="product-grid" id="product-list" aria-live="polite"></div>
           </section>
         </main>
       </div>
     </div>
+    <dialog class="crud-dialog" id="crud-dialog"><form method="dialog" id="crud-form"><header><h2 id="crud-title">Sản phẩm</h2><button type="button" class="dialog-close" aria-label="Đóng">×</button></header><div id="crud-fields"></div><footer><button type="button" class="secondary-action dialog-close">Hủy</button><button type="submit" class="primary-action">Lưu</button></footer></form></dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div><script src="app.js" defer></script>
   </body>
 </html>

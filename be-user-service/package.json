@@ -10,7 +10,14 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.81.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.223.0",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.223.0",
+    "@opentelemetry/sdk-metrics": "^2.0.0",
+    "@opentelemetry/sdk-node": "^0.223.0",
     "cors": "^2.8.5",
     "express": "^4.21.2"
+    ,"mysql2": "^3.15.3"
   }
 }

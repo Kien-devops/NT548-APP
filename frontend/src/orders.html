@@ -34,12 +34,13 @@
             <article class="summary-card"><span>Tổng giá trị</span><strong id="revenue-total">—</strong></article>
           </section>
           <section class="panel page-panel">
-            <header class="panel-header"><div><p class="panel-kicker">Giao dịch</p><h2>Tất cả đơn hàng</h2></div><span class="quiet-label" id="order-total-label">0 đơn hàng</span></header>
-            <div class="table-wrap"><table class="entity-table"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Tổng tiền</th><th>Trạng thái</th></tr></thead><tbody id="order-list" aria-live="polite"></tbody></table></div>
+            <header class="panel-header"><div><p class="panel-kicker">Giao dịch</p><h2>Tất cả đơn hàng</h2></div><div class="panel-actions"><span class="quiet-label" id="order-total-label">0 đơn hàng</span><button class="primary-action" type="button" data-create="orders">Thêm đơn hàng</button></div></header>
+            <div class="table-wrap"><table class="entity-table"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Tổng tiền</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="order-list" aria-live="polite"></tbody></table></div>
           </section>
         </main>
       </div>
     </div>
+    <dialog class="crud-dialog" id="crud-dialog"><form method="dialog" id="crud-form"><header><h2 id="crud-title">Đơn hàng</h2><button type="button" class="dialog-close" aria-label="Đóng">×</button></header><div id="crud-fields"></div><footer><button type="button" class="secondary-action dialog-close">Hủy</button><button type="submit" class="primary-action">Lưu</button></footer></form></dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div><script src="app.js" defer></script>
   </body>
 </html>

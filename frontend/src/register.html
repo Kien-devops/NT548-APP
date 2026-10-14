@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Đăng ký tài khoản NT548 Commerce." />
+    <title>Đăng ký · NT548 Commerce</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="auth-page" data-page="register">
+    <a class="skip-link" href="#register-form">Đi đến biểu mẫu đăng ký</a>
+    <main class="auth-layout">
+      <header class="auth-topbar">
+        <a class="auth-brand" href="login.html" aria-label="NT548 Commerce">
+          <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M8 12h16l-1.2 14H9.2L8 12Z"/><path d="M12 14V9a4 4 0 0 1 8 0v5"/></svg></span>
+          <span><strong>NT548</strong><small>Commerce Console</small></span>
+        </a>
+      </header>
+      <div class="auth-content auth-content-register">
+        <section class="auth-form-side" aria-labelledby="register-title">
+          <div class="auth-card">
+            <div class="auth-heading">
+              <p class="eyebrow">Tài khoản mới</p>
+              <h1 id="register-title">Đăng ký tài khoản</h1>
+              <p>Tạo tài khoản người dùng để đăng nhập hệ thống.</p>
+            </div>
+            <form id="register-form" class="login-form" novalidate>
+              <div class="form-field"><label for="name">Họ tên <span aria-hidden="true">*</span></label><div class="input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 22a8 8 0 0 1 16 0"/></svg><input id="name" name="name" autocomplete="name" minlength="2" required /></div><p class="field-error" id="name-error"></p></div>
+              <div class="form-field"><label for="email">Email <span aria-hidden="true">*</span></label><div class="input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg><input id="email" name="email" type="email" autocomplete="email" required /></div><p class="field-error" id="email-error"></p></div>
+              <div class="form-field"><label for="password">Mật khẩu <span aria-hidden="true">*</span></label><div class="input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><input id="password" name="password" type="password" autocomplete="new-password" minlength="6" required /></div><p class="field-error" id="password-error"></p></div>
+              <div class="form-field"><label for="confirm-password">Nhập lại mật khẩu <span aria-hidden="true">*</span></label><div class="input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" minlength="6" required /></div><p class="field-error" id="confirm-password-error"></p></div>
+              <button class="login-button" type="submit"><span class="login-button-label">Đăng ký</span></button>
+              <p class="auth-switch">Đã có tài khoản? <a href="login.html">Đăng nhập</a></p>
+            </form>
+          </div>
+        </section>
+      </div>
+    </main>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js" defer></script>
+  </body>
+</html>

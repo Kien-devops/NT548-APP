@@ -7,6 +7,11 @@ server {
 
     add_header X-NT548-Environment "${ENVIRONMENT}" always;
 
+    location ~* \.(?:html|js|css)$ {
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        try_files $uri =404;
+    }
+
     # Dedicated lightweight health check endpoint
     location = /health {
         access_log off;
@@ -18,7 +23,7 @@ server {
     # Resolve upstreams at request time. PROD points these variables at the
     # shared ALB because ALB path rules own service routing; Compose uses its
     # private service DNS names.
-    resolver 169.254.169.253 127.0.0.11 8.8.8.8 valid=30s ipv6=off;
+    resolver ${DNS_RESOLVER} valid=30s ipv6=off;
 
     location /api/users {
         set $user_host "${USER_SERVICE_HOST}";

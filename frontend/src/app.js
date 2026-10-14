@@ -101,6 +101,7 @@ function renderProducts() {
         <div class="product-body">
           <div class="product-title"><span class="category-pill">${escapeHtml(product.category)}</span><strong>${escapeHtml(product.name)}</strong><small>Mã sản phẩm #${escapeHtml(product.id)}</small></div>
           <div class="product-card-foot"><span><small>Giá bán</small><strong class="product-price">${currency.format(Number(product.price))}</strong></span><span class="product-state">Sẵn sàng</span></div>
+          <div class="crud-actions"><button type="button" class="secondary-action" data-edit="products" data-id="${escapeHtml(product.id)}">Sửa</button><button type="button" class="danger-action" data-delete="products" data-id="${escapeHtml(product.id)}">Xóa</button></div>
         </div>
       </article>`).join("")
     : '<div class="empty-state">Chưa có sản phẩm.</div>';
@@ -118,7 +119,8 @@ function renderOrders() {
   target.innerHTML = visibleOrders.length
     ? visibleOrders.map((order) => {
       const status = statusMeta(order.status);
-      return `<tr><td class="order-id" data-label="Mã đơn">${escapeHtml(order.order_id)}</td><td data-label="Khách hàng">${escapeHtml(order.customer)}</td><td class="money" data-label="Tổng tiền">${currency.format(Number(order.total))}</td><td data-label="Trạng thái"><span class="status-pill ${status.className}">${escapeHtml(status.label)}</span></td></tr>`;
+      const actions = page === "orders" ? `<td data-label="Thao tác"><div class="crud-actions"><button type="button" class="secondary-action" data-edit="orders" data-id="${escapeHtml(order.order_id)}">Sửa</button><button type="button" class="danger-action" data-delete="orders" data-id="${escapeHtml(order.order_id)}">Xóa</button></div></td>` : "";
+      return `<tr><td class="order-id" data-label="Mã đơn">${escapeHtml(order.order_id)}</td><td data-label="Khách hàng">${escapeHtml(order.customer)}</td><td class="money" data-label="Tổng tiền">${currency.format(Number(order.total))}</td><td data-label="Trạng thái"><span class="status-pill ${status.className}">${escapeHtml(status.label)}</span></td>${actions}</tr>`;
     }).join("")
     : '<tr><td colspan="4" class="empty-state">Chưa có đơn hàng.</td></tr>';
   text("order-count", state.orders.length);
@@ -192,6 +194,75 @@ function showToast(message) {
   window.clearTimeout(showToast.timer);
   showToast.timer = window.setTimeout(() => toast.classList.remove("is-visible"), 2600);
 }
+
+async function mutateResource(section, method, id, body) {
+  const path = id === undefined ? endpoints[section] : `${endpoints[section]}/${encodeURIComponent(id)}`;
+  const response = await fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${getAccessToken()}` },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (response.status === 401 || response.status === 403) return redirectToLogin();
+  if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+  return payload;
+}
+
+function openCrudDialog(section, item = null) {
+  const dialog = document.getElementById("crud-dialog");
+  const fields = document.getElementById("crud-fields");
+  const form = document.getElementById("crud-form");
+  if (!dialog || !fields || !form) return;
+  const editing = Boolean(item);
+  document.getElementById("crud-title").textContent = `${editing ? "Sửa" : "Thêm"} ${section === "products" ? "sản phẩm" : "đơn hàng"}`;
+  fields.innerHTML = section === "products" ? `
+    <label>Mã sản phẩm<input name="id" type="number" min="1" required value="${item ? escapeHtml(item.id) : ""}" ${editing ? "readonly" : ""}></label>
+    <label>Tên sản phẩm<input name="name" required value="${item ? escapeHtml(item.name) : ""}"></label>
+    <label>Danh mục<input name="category" required value="${item ? escapeHtml(item.category) : ""}"></label>
+    <label>Giá<input name="price" type="number" min="0" step="0.01" required value="${item ? escapeHtml(item.price) : ""}"></label>` : `
+    <label>Mã đơn<input name="order_id" required value="${item ? escapeHtml(item.order_id) : ""}" ${editing ? "readonly" : ""}></label>
+    <label>Khách hàng<input name="customer" required value="${item ? escapeHtml(item.customer) : ""}"></label>
+    <label>Tổng tiền<input name="total" type="number" min="0" step="0.01" required value="${item ? escapeHtml(item.total) : ""}"></label>
+    <label>Trạng thái<select name="status"><option>PENDING</option><option>PROCESSING</option><option>COMPLETED</option><option>CANCELLED</option></select></label>`;
+  if (item && section === "orders") form.elements.status.value = item.status;
+  form.dataset.section = section;
+  form.dataset.id = item ? String(section === "products" ? item.id : item.order_id) : "";
+  dialog.showModal();
+}
+
+document.addEventListener("click", async (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  const create = target?.closest("[data-create]");
+  const edit = target?.closest("[data-edit]");
+  const remove = target?.closest("[data-delete]");
+  if (create) return openCrudDialog(create.dataset.create);
+  if (edit) {
+    const item = state[edit.dataset.edit].find((entry) => String(edit.dataset.edit === "products" ? entry.id : entry.order_id) === edit.dataset.id);
+    return openCrudDialog(edit.dataset.edit, item);
+  }
+  if (remove) {
+    if (!window.confirm("Bạn có chắc muốn xóa mục này?")) return;
+    try {
+      await mutateResource(remove.dataset.delete, "DELETE", remove.dataset.id);
+      await loadSection(remove.dataset.delete);
+      showToast("Đã xóa thành công.");
+    } catch (error) { showToast(error.message); }
+  }
+  if (target?.closest(".dialog-close")) document.getElementById("crud-dialog")?.close();
+});
+
+document.getElementById("crud-form")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const section = form.dataset.section;
+  const data = Object.fromEntries(new FormData(form));
+  try {
+    await mutateResource(section, form.dataset.id ? "PUT" : "POST", form.dataset.id || undefined, data);
+    document.getElementById("crud-dialog")?.close();
+    await loadSection(section);
+    showToast("Đã lưu thành công.");
+  } catch (error) { showToast(error.message); }
+});
 
 function sectionsForPage() {
   if (page === "overview") return ["products", "orders"];
@@ -338,6 +409,37 @@ function initializeLogin() {
   }
 }
 
+function initializeRegister() {
+  const form = document.getElementById("register-form");
+  if (!form) return;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const name = form.elements.namedItem("name").value.trim();
+    const email = form.elements.namedItem("email").value.trim();
+    const password = form.elements.namedItem("password").value;
+    const confirmPassword = form.elements.namedItem("confirmPassword").value;
+    const valid = name.length >= 2 && /^\S+@\S+\.\S+$/.test(email) && password.length >= 6 && password === confirmPassword;
+    document.getElementById("name-error").textContent = name.length >= 2 ? "" : "Họ tên cần tối thiểu 2 ký tự.";
+    document.getElementById("email-error").textContent = /^\S+@\S+\.\S+$/.test(email) ? "" : "Email không hợp lệ.";
+    document.getElementById("password-error").textContent = password.length >= 6 ? "" : "Mật khẩu cần ít nhất 6 ký tự.";
+    document.getElementById("confirm-password-error").textContent = password === confirmPassword ? "" : "Mật khẩu nhập lại không khớp.";
+    if (!valid) return;
+    const button = form.querySelector(".login-button");
+    button.disabled = true;
+    try {
+      const response = await fetch("/api/users/register", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ name, email, password }) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.message || "Không thể đăng ký tài khoản.");
+      showToast("Đăng ký thành công. Đang chuyển đến đăng nhập...");
+      window.setTimeout(() => window.location.assign("login.html"), 700);
+    } catch (error) {
+      showToast(error.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
 function initializeAuthNavigation() {
   if (!getAccessToken()) return;
   document.querySelectorAll("[data-auth-link]").forEach((link) => {
@@ -378,6 +480,7 @@ function initializeInteractionMotion() {
 initializeInteractionMotion();
 
 if (page === "login") initializeLogin();
+else if (page === "register") initializeRegister();
 else if (getAccessToken()) {
   initializeCurrentUser();
   initializeAuthNavigation();

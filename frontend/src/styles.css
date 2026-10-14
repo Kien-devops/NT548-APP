@@ -204,6 +204,9 @@ tbody tr:hover { background: #fbfcfd; }
 .auth-heading h1 { margin: .45rem 0 0; font-size: clamp(1.8rem,3vw,2.25rem); line-height: 1.16; letter-spacing: -.045em; }
 .auth-heading > p:last-child { margin: .65rem 0 0; color: #5f6b7c; font-size: .9rem; line-height: 1.6; }
 .login-form { display: grid; gap: 1rem; }
+.auth-content-register { grid-template-columns: minmax(0, 560px); justify-content: center; }
+.auth-switch { margin: 0; text-align: center; color: #667085; font-size: .84rem; }
+.auth-switch a { color: var(--auth-accent-dark); font-weight: 800; }
 .form-field { display: grid; gap: .42rem; }
 .form-field label { color: var(--text); font-size: .82rem; font-weight: 750; }
 .form-field label > span { color: var(--auth-accent-dark); }
@@ -349,6 +352,20 @@ main { padding-top: clamp(1.5rem,3vw,2.5rem); }
 .metric-products::before { background: #e88c22; }.metric-orders::before { background: #7759d7; }.metric-revenue::before { background: #1a8a64; }
 .metric-icon { width: 42px; height: 42px; border-radius: 6px; }
 .metric-users .metric-icon { background: var(--primary-soft); color: var(--primary); }
+
+.panel-actions,.crud-actions { display: flex; align-items: center; gap: .5rem; }
+.primary-action,.secondary-action,.danger-action { border: 0; border-radius: 8px; padding: .55rem .8rem; font: inherit; cursor: pointer; }
+.primary-action { background: var(--primary); color: #fff; }
+.secondary-action { background: var(--surface-muted, #eef2f6); color: var(--text, #263238); }
+.danger-action { background: #fff0f0; color: #b42318; }
+.crud-dialog { width: min( min(92vw, 480px), 480px); border: 0; border-radius: 14px; padding: 0; box-shadow: 0 24px 80px #14213d40; }
+.crud-dialog::backdrop { background: #14213d66; }
+.crud-dialog form { display: grid; gap: 1rem; padding: 1.25rem; }
+.crud-dialog header,.crud-dialog footer { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.crud-dialog h2 { margin: 0; }
+.crud-dialog label { display: grid; gap: .35rem; margin: .75rem 0; font-weight: 650; }
+.crud-dialog input,.crud-dialog select { border: 1px solid var(--border, #d7dde5); border-radius: 8px; padding: .65rem .7rem; font: inherit; }
+.dialog-close { border: 0; background: transparent; font-size: 1.5rem; cursor: pointer; }
 .metric-copy strong { font-size: 1.85rem; }
 .metric-copy em { margin-top: .35rem; }
 a.metric-card:hover { border-color: #d8b9ac; box-shadow: 0 2px 8px rgba(54,39,32,.06); transform: none; }

@@ -43,3 +43,20 @@ test("login issues a token accepted by /me", async () => {
   assert.equal(me.status, 200);
   assert.equal((await me.json()).email, process.env.ADMIN_EMAIL);
 });
+
+test("registration creates a user that can log in", async () => {
+  const email = `user-${Date.now()}@example.com`;
+  const register = await fetch(`${baseUrl}/api/users/register`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name: "Test User", email, password: "secret123" }),
+  });
+  assert.equal(register.status, 201);
+  const login = await fetch(`${baseUrl}/api/users/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, password: "secret123" }),
+  });
+  assert.equal(login.status, 200);
+  assert.equal((await login.json()).user.email, email);
+});
