@@ -7,9 +7,10 @@ env:
 
 phases:
   install:
+    runtime-versions:
+      python: 3.12
     commands:
       - "chmod +x scripts/*.sh"
   build:
     commands:
-      - "echo Deploying approved changes to PROD ECS"
       - "bash scripts/prod-deploy.sh"

@@ -69,3 +69,5 @@ artifacts:
     - ecr-scan-summary.json
     - changed_components.json
     - changed_components.env
+    - scripts/prod-deploy.sh
+    - buildspec/prod-deploy.yml
