@@ -66,11 +66,11 @@ PY
   [[ -n "$new_task_definition" && "$new_task_definition" != "None" ]] || { echo "[ERROR] Registration failed for $service" >&2; return 1; }
   echo "[DEPLOY] $service -> new task definition $new_task_definition"
   aws ecs update-service --cluster "$CLUSTER_NAME" --service "$ecs_service" --task-definition "$new_task_definition" --region "$AWS_REGION" >/dev/null
-  aws ecs wait services-stable --cluster "$CLUSTER_NAME" --services "$ecs_service" --region "$AWS_REGION"
-
   current_definition=".taskdef-${service}-verify.json"
-  aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$ecs_service" --region "$AWS_REGION" --query 'services[0]' --output json > "$current_definition"
-  EXPECTED_TASK_DEFINITION="$new_task_definition" VERIFY_DEFINITION="$current_definition" "$PYTHON_BIN" - <<'PY'
+  verified=false
+  for attempt in $(seq 1 60); do
+    aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$ecs_service" --region "$AWS_REGION" --query 'services[0]' --output json > "$current_definition"
+    if EXPECTED_TASK_DEFINITION="$new_task_definition" VERIFY_DEFINITION="$current_definition" "$PYTHON_BIN" - <<'PY'
 import json, os
 service = json.load(open(os.environ["VERIFY_DEFINITION"], encoding="utf-8"))
 expected = os.environ["EXPECTED_TASK_DEFINITION"]
@@ -78,11 +78,20 @@ active = service.get("taskDefinition")
 primary = next((item for item in service.get("deployments", []) if item.get("status") == "PRIMARY"), None)
 primary_task_definition = primary.get("taskDefinition") if primary else None
 rollout_state = (primary or {}).get("rolloutState")
-if active != expected or primary_task_definition != expected or (rollout_state is not None and rollout_state != "COMPLETED"):
+if active == expected and primary_task_definition == expected and rollout_state in (None, "COMPLETED"):
+    raise SystemExit(0)
+if rollout_state == "FAILED":
     raise SystemExit(
         f"Deployment rolled back or did not activate expected revision: active={active!r}, primary={primary_task_definition!r}, rolloutState={rollout_state!r}, expected={expected!r}"
     )
 PY
+    then
+      verified=true
+      break
+    fi
+    sleep 10
+  done
+  [[ "$verified" == "true" ]] || { echo "[ERROR] Timed out waiting for $service deployment to complete" >&2; rm -f "$current_definition"; return 1; }
   rm -f "$current_definition"
   echo "[VERIFY] $service active task definition: $new_task_definition"
 }
