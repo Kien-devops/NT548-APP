@@ -1,5 +1,7 @@
 # NT548-APP — Microservices Application Codebase
 
+<!-- CI selective-deploy verification: docs-only change. -->
+
 Kho chứa mã nguồn của các microservices trong hệ thống **NT548**, được triển khai trên **Amazon ECS Fargate** qua CI/CD Pipelines tự động.
 
 Hạ tầng nền tảng (VPC, ALB, ECS Cluster, ECR Repositories, IAM Roles, Pipelines) được quản lý riêng biệt tại repository hạ tầng: [NT548 (Infra)](https://github.com/Jonnysilverfang/NT548).
