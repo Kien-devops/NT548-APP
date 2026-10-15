@@ -1,3 +1,4 @@
+// CI selective-deploy verification: product+order parallel revision.
 require("./telemetry");
 
 const crypto = require("crypto");
