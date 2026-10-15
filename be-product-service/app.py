@@ -11,6 +11,7 @@ from flask import request
 from flask_cors import CORS
 import pymysql
 
+# CI selective-deploy verification: product-only revision.
 
 app = Flask(__name__)
 CORS(app)
